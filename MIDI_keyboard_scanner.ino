@@ -262,46 +262,80 @@ void loop() {
           int& state = keybed[key][3];
           int& ktime = keybed[key][4];
 
-          // State machine
           #ifdef DEBUG_STATE_MACHINE
             const char* note_name = note_names[key];
           #endif
-          if (state == STATE_KEY_OFF && PM_Pin_val == LOW) {
-            state = STATE_KEY_START;
-            ktime = millis();
-            #ifdef DEBUG_STATE_MACHINE
-              Serial.print(note_name);
-              Serial.println(" started");
-            #endif
-          } else if (state == STATE_KEY_START && SM_Pin_val == LOW) {
-            state = STATE_KEY_ON;
-            send_midi_note(0x90, key, millis() - ktime); // MIDI note_on
-            #ifdef DEBUG_STATE_MACHINE
-              Serial.print(note_name);
-              Serial.print(" on, ktime: ");
-              Serial.println(millis() - ktime);
-            #endif
-          } else if (state == STATE_KEY_ON && SM_Pin_val == HIGH) {
-            state = STATE_KEY_RELEASED;
-            #ifdef DEBUG_STATE_MACHINE
-              Serial.print(note_name);
-              Serial.println(" released");
-            #endif
-          } else if (state == STATE_KEY_RELEASED && PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
-            state = STATE_KEY_OFF;
-            send_midi_note(0x80, key, millis() - ktime); // MIDI note_off
-            #ifdef DEBUG_STATE_MACHINE
-              Serial.print(note_name);
-              Serial.println(" off");
-              Serial.println();
-            #endif
-          } else if ((state == STATE_KEY_START || state == STATE_KEY_ON) && PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
-            state = STATE_KEY_OFF;
-            #ifdef DEBUG_STATE_MACHINE
-              Serial.print(note_name);
-              Serial.println(" released before measurement could be taken, reset to off");
-              Serial.println();
-            #endif
+
+          // State machine
+          switch (state) {
+            case STATE_KEY_OFF:
+              if (PM_Pin_val == LOW) {
+                state = STATE_KEY_START;
+                ktime = millis();
+
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.println(" started");
+                #endif
+              }
+              break;
+            
+            case STATE_KEY_START:
+              if (SM_Pin_val == LOW) {
+                state = STATE_KEY_ON;
+                send_midi_note(0x90, key, millis() - ktime); // MIDI note_on
+
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.print(" on, ktime: ");
+                  Serial.println(millis() - ktime);
+                #endif
+                
+              } else if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+                state = STATE_KEY_OFF;
+
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.println(" off condition met before measurement could be taken, reset to off");
+                  Serial.println();
+                #endif
+              }
+              break;
+            
+            case STATE_KEY_ON:
+              if (SM_Pin_val == HIGH) {
+                state = STATE_KEY_RELEASED;
+
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.println(" released");
+                #endif
+
+              } else if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+                state = STATE_KEY_OFF;
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.println(" off condition met before release was detected, reset to off");
+                  Serial.println();
+                #endif
+              }
+              break;
+
+            case STATE_KEY_RELEASED:
+              if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+                state = STATE_KEY_OFF;
+                send_midi_note(0x80, key, millis() - ktime); // MIDI note_off
+
+                #ifdef DEBUG_STATE_MACHINE
+                  Serial.print(note_name);
+                  Serial.println(" off");
+                  Serial.println();
+                #endif
+              }
+              break;
+            
+            default:
+              break;
           }
         }
       }
