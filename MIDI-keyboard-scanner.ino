@@ -39,7 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DEBUG_MIDI_MESSAGE
 
 // Uncomment to see serial messages from the state machine
-// #define DEBUG_STATE_MACHINE
+#define DEBUG_STATE_MACHINE
 
 #define PIN_T0 0
 #define PIN_T1 1
@@ -158,6 +158,10 @@ byte keybed[TOTAL_KEYS][3]{
   { PIN_T0, PIN_PM6, PIN_SM6 }  // C5
 };
 
+// Stores for PM and SM values 
+byte pm_switches[TOTAL_KEYS] = {};
+byte sm_switches[TOTAL_KEYS] = {};
+
 // Store for state per key
 byte states[TOTAL_KEYS] = {};
 
@@ -231,9 +235,11 @@ void setup() {
 
 void loop() {
   // Detect if any keys are on
+  is_note_on = false;
   for (byte key = 0; key < TOTAL_KEYS; key++) {
     if (states[key] == STATE_KEY_ON) {
       is_note_on = true;
+      break;
     }
   }
 
@@ -250,100 +256,89 @@ void loop() {
     // Delay scanning by a tiny amount to prevent ghost readings
     delayMicroseconds(1);
 
-    // Scan through each PM pin
-    for (byte pm_pin_index = 0; pm_pin_index < sizeof(pm_pins); pm_pin_index++) {
-      byte pm_pin = pm_pins[pm_pin_index];
-      bool pm_switch_is_on = digitalRead(pm_pin) == LOW ? true : false;
+    // Loop through each key and update the state of the key based on the
+    // PM/SM values being pulled low
+    for (byte key = 0; key < TOTAL_KEYS; key++) {
+      if (t_pin == keybed[key][0]) {
+        // Get PM value from keybed map
+        byte pm_pin = keybed[key][1];
+        bool pm_switch_is_on = digitalRead(pm_pin) == LOW ? true : false;
 
-      // Scanning each SM pin is unnecessary, as we can derive the related SM
-      // pin from the PM pin index.
-      byte sm_pin = sm_pins[pm_pin_index];
-      bool sm_switch_is_on = digitalRead(sm_pin) == LOW ? true : false;
+        // Get SM value from keybed map
+        byte sm_pin = keybed[key][2];
+        bool sm_switch_is_on = digitalRead(sm_pin) == LOW ? true : false;
 
-      // Loop through each key and update the state of the key based on the
-      // PM/SM values being pulled low
-      for (byte key = 0; key < TOTAL_KEYS; key++) {
+        // Get references to this key's state/ktime
+        byte& state = states[key];
+        long long& ktime = ktimes[key];
 
-        // Match the key in the loop with the current PM gate
-        if (keybed[key][0] == t_pin && keybed[key][1] == pm_pin) {
-          // Get references to this key's state/ktime so that when we write to
-          // it, the new value is stored in the corresponding index of their
-          // respective arrays
-          byte& state = states[key];
-          long long& ktime = ktimes[key];
+        // State machine
+        // TODO: Add support for sustain pedal
+        switch (state) {
+          case STATE_KEY_OFF:
+            if (pm_switch_is_on) {
+              state = STATE_KEY_START;
+              ktime = millis();
 
-          #ifdef DEBUG_STATE_MACHINE
-            const char* note_name = note_names[key];
-          #endif
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.println(" started");
+              #endif
+            } break;
+          
+          case STATE_KEY_START:
+            if (sm_switch_is_on) {
+              state = STATE_KEY_ON;
+              send_midi_note(MIDI_NOTE_ON, key, millis() - ktime); // MIDI note_on
 
-          // State machine
-          // TODO: Add support for sustain pedal
-          switch (state) {
-            case STATE_KEY_OFF:
-              if (pm_switch_is_on) {
-                state = STATE_KEY_START;
-                ktime = millis();
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.print(" on, ktime: ");
+                Serial.println(millis() - ktime);
+              #endif
+              
+            } else if (!pm_switch_is_on && !sm_switch_is_on) {
+              state = STATE_KEY_OFF;
 
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.println(" started");
-                #endif
-              } break;
-            
-            case STATE_KEY_START:
-              if (sm_switch_is_on) {
-                state = STATE_KEY_ON;
-                send_midi_note(MIDI_NOTE_ON, key, millis() - ktime); // MIDI note_on
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.println(" off condition met before measurement could be taken, reset to off");
+                Serial.println();
+              #endif
+            } break;
+          
+          case STATE_KEY_ON:
+            if (!sm_switch_is_on) {
+              state = STATE_KEY_RELEASED;
 
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.print(" on, ktime: ");
-                  Serial.println(millis() - ktime);
-                #endif
-                
-              } else if (!pm_switch_is_on && !sm_switch_is_on) {
-                state = STATE_KEY_OFF;
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.println(" released");
+              #endif
 
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.println(" off condition met before measurement could be taken, reset to off");
-                  Serial.println();
-                #endif
-              } break;
-            
-            case STATE_KEY_ON:
-              if (!sm_switch_is_on) {
-                state = STATE_KEY_RELEASED;
+            } else if (!pm_switch_is_on && !sm_switch_is_on) {
+              state = STATE_KEY_OFF;
 
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.println(" released");
-                #endif
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.println(" off condition met before release was detected, reset to off");
+                Serial.println();
+              #endif
+            } break;
 
-              } else if (!pm_switch_is_on && !sm_switch_is_on) {
-                state = STATE_KEY_OFF;
+          case STATE_KEY_RELEASED:
+            if (!pm_switch_is_on && !sm_switch_is_on) {
+              state = STATE_KEY_OFF;
+              send_midi_note(MIDI_NOTE_OFF, key, millis() - ktime); // MIDI note_off
 
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.println(" off condition met before release was detected, reset to off");
-                  Serial.println();
-                #endif
-              } break;
-
-            case STATE_KEY_RELEASED:
-              if (!pm_switch_is_on && !sm_switch_is_on) {
-                state = STATE_KEY_OFF;
-                send_midi_note(MIDI_NOTE_OFF, key, millis() - ktime); // MIDI note_off
-
-                #ifdef DEBUG_STATE_MACHINE
-                  Serial.print(note_name);
-                  Serial.println(" off");
-                  Serial.println();
-                #endif
-              } break;
-            
-            default: break;
-          }
+              #ifdef DEBUG_STATE_MACHINE
+                Serial.print(note_names[key]);
+                Serial.println(" off");
+                Serial.println();
+              #endif
+            } break;
+          
+          default: break;
         }
       }
     }
