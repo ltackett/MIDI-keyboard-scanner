@@ -282,7 +282,7 @@ void loop() {
             case STATE_KEY_OFF:
               if (pm_switch_is_on) {
                 state = STATE_KEY_START;
-                ktime = millis(); // get current 
+                ktime = millis();
 
                 #ifdef DEBUG_STATE_MACHINE
                   Serial.print(note_name);
