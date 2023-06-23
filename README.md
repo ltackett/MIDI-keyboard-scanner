@@ -16,7 +16,7 @@ https://github.com/oxesoft/keyboardscanner
 ---
 
 This code is originally hosted at:  
-https://github.com/ltackett/MIDI_keyboard_scanner
+https://github.com/ltackett/MIDI-keyboard-scanner
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

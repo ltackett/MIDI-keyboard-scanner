@@ -5,8 +5,8 @@ Copyright (C) 2023 Lorin Tackett <lorin@lorintackett.com>
 This MIDI keyboard scanner works with Roland and Edirol keybeds from the PCR
 series. The pin names refer directly to the pins on the PCR W30 keybed.
 
-It is designed to run on a Teensy 4.0, but it is generic enough that it should
-work on any arduino-compatible microcontroller.
+It is designed to run on a Teensy microcontroller, but it is generic enough
+that it should work on any arduino-compatible microcontroller.
 
 IMPORTANT: The Arduino MIDI library is included with the Teensy Arduino library,
 you may need to install this library yourself.
@@ -16,7 +16,7 @@ Inspired by Daniel Moura's Keyboard Scanner:
 https://github.com/oxesoft/keyboardscanner
 
 This code is originally hosted at:
-https://github.com/ltackett/MIDI_keyboard_scanner
+https://github.com/ltackett/MIDI-keyboar-scanner
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Uncomment as necessary
 // #include <USB-MIDI>
 
-// Uncomment to see MIDI data is being sent out
+// Uncomment to see MIDI data being sent out
 // #define DEBUG_MIDI_MESSAGE
 
 // Uncomment to see serial messages from the state machine
@@ -107,19 +107,19 @@ byte sm_pins[]{
   PIN_SM6
 };
 
-// Note names from lowest to highest, grouped by octave
-// Each element has a counterpart item in the keybed array at the same index
+// Note names from lowest to highest, grouped by octave, for debugging purposes
 #ifdef DEBUG_STATE_MACHINE
-  const char* note_names[TOTAL_KEYS] = {    "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
-    "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
-    "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
-    "C5",
+  const char* note_names[TOTAL_KEYS] = { 
+                                  "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
+  "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
+  "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
+  "C5",
   };
 #endif
 
 // Map of pin combinations per key, grouped by octave
 byte keybed[TOTAL_KEYS][3]{
-  // T      // PM    // SM      // note
+    // T    // PM    // SM      // note
   { PIN_T1, PIN_PM2, PIN_SM2 }, // F2
   { PIN_T2, PIN_PM2, PIN_SM2 }, // F#2
   { PIN_T3, PIN_PM2, PIN_SM2 }, // G2
@@ -287,8 +287,7 @@ void loop() {
                   Serial.print(note_name);
                   Serial.println(" started");
                 #endif
-              }
-              break;
+              } break;
             
             case STATE_KEY_START:
               if (sm_switch_is_on) {
@@ -309,8 +308,7 @@ void loop() {
                   Serial.println(" off condition met before measurement could be taken, reset to off");
                   Serial.println();
                 #endif
-              }
-              break;
+              } break;
             
             case STATE_KEY_ON:
               if (!sm_switch_is_on) {
@@ -329,8 +327,7 @@ void loop() {
                   Serial.println(" off condition met before release was detected, reset to off");
                   Serial.println();
                 #endif
-              }
-              break;
+              } break;
 
             case STATE_KEY_RELEASED:
               if (!pm_switch_is_on && !sm_switch_is_on) {
@@ -342,11 +339,9 @@ void loop() {
                   Serial.println(" off");
                   Serial.println();
                 #endif
-              }
-              break;
+              } break;
             
-            default:
-              break;
+            default: break;
           }
         }
       }
