@@ -121,7 +121,6 @@ byte sm_pins[]{
 
 // Map of pin combinations per key, grouped by octave
 byte keybed[TOTAL_KEYS][3]{
-    // T    // PM    // SM      // note
   { PIN_T1, PIN_PM2, PIN_SM2 }, // F2
   { PIN_T2, PIN_PM2, PIN_SM2 }, // F#2
   { PIN_T3, PIN_PM2, PIN_SM2 }, // G2
