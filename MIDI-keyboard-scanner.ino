@@ -43,6 +43,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Uncomment to see serial messages from the state machine
 // #define DEBUG_STATE_MACHINE
 
+// Uncomment to disable sending MIDI messages
+// #define DEBUG_DISABLE_MIDI
+
 #define PIN_T0 0
 #define PIN_T1 1
 #define PIN_T2 2
@@ -194,13 +197,15 @@ void send_midi_note(byte status_byte, byte key_index, unsigned int time) {
   #endif
 
 
-  if (status_byte == MIDI_NOTE_ON) {
-    usbMIDI.sendNoteOn(key, vel == 0 ? 1 : vel, MIDI_CHANNEL);
-  }
+  #ifndef DEBUG_DISABLE_MIDI
+    if (status_byte == MIDI_NOTE_ON) {
+      usbMIDI.sendNoteOn(key, vel == 0 ? 1 : vel, MIDI_CHANNEL);
+    }
 
-  else if (status_byte == MIDI_NOTE_OFF) {
-    usbMIDI.sendNoteOff(key, vel, MIDI_CHANNEL);
-  }
+    else if (status_byte == MIDI_NOTE_OFF) {
+      usbMIDI.sendNoteOff(key, vel, MIDI_CHANNEL);
+    }
+  #endif
 }
 
 // SETUP
