@@ -74,7 +74,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MAX_TIME_MS_N (MAX_TIME_MS - MIN_TIME_MS)
 
 #define MIDI_CHANNEL 1
-#define MIDI_NOTE_OFFSET 41
+#define MIDI_KEY_OFFSET 41
+#define MIDI_NOTE_ON 0x90
+#define MIDI_NOTE_OFF 0x80
 #define TOTAL_KEYS 32
 
 // Trigger pins (OUTPUT)
@@ -168,7 +170,7 @@ bool is_note_on = false;
 
 // Handle calculating velicty and sending MIDI data
 void send_midi_note(byte status_byte, byte key_index, unsigned int time) {
-  byte key = MIDI_NOTE_OFFSET + key_index;
+  byte key = MIDI_KEY_OFFSET + key_index;
 
   // Velocity from time measurement
   unsigned int t = time;
@@ -187,11 +189,11 @@ void send_midi_note(byte status_byte, byte key_index, unsigned int time) {
   #endif
 
 
-  if (status_byte == 0x90) {
+  if (status_byte == MIDI_NOTE_ON) {
     usbMIDI.sendNoteOn(key, vel == 0 ? 1 : vel, MIDI_CHANNEL);
   }
 
-  else if (status_byte == 0x80) {
+  else if (status_byte == MIDI_NOTE_OFF) {
     usbMIDI.sendNoteOff(key, vel, MIDI_CHANNEL);
   }
 }
@@ -254,7 +256,7 @@ void loop() {
       byte pm_pin = pm_pins[pm_pin_index];
       bool pm_switch_is_on = digitalRead(pm_pin) == LOW ? true : false;
 
-      // Scanning each SM pins is unnecessary, as we can derive the related SM
+      // Scanning each SM pin is unnecessary, as we can derive the related SM
       // pin from the PM pin index.
       byte sm_pin = sm_pins[pm_pin_index];
       bool sm_switch_is_on = digitalRead(sm_pin) == LOW ? true : false;
@@ -292,7 +294,7 @@ void loop() {
             case STATE_KEY_START:
               if (sm_switch_is_on) {
                 state = STATE_KEY_ON;
-                send_midi_note(0x90, key, millis() - ktime); // MIDI note_on
+                send_midi_note(MIDI_NOTE_ON, key, millis() - ktime); // MIDI note_on
 
                 #ifdef DEBUG_STATE_MACHINE
                   Serial.print(note_name);
@@ -332,7 +334,7 @@ void loop() {
             case STATE_KEY_RELEASED:
               if (!pm_switch_is_on && !sm_switch_is_on) {
                 state = STATE_KEY_OFF;
-                send_midi_note(0x80, key, millis() - ktime); // MIDI note_off
+                send_midi_note(MIDI_NOTE_OFF, key, millis() - ktime); // MIDI note_off
 
                 #ifdef DEBUG_STATE_MACHINE
                   Serial.print(note_name);
