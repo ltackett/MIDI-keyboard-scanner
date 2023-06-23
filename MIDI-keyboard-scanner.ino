@@ -3,9 +3,11 @@ MIDI Keyboard Scanner for Roland/Edirol PCR keybed
 Copyright (C) 2023 Lorin Tackett <lorin@lorintackett.com>
 
 This MIDI keyboard scanner works with Roland and Edirol keybeds from the PCR
-series. The pin names refer directly to the pins on the PCR W30 keybed.
+series. The pin names refer directly to the pinout on the PCR W30 keybed. Plug
+each pin from the ribbon cable directly into the pins you've configured on your
+microcontroller.
 
-It is designed to run on a Teensy microcontroller, but it is generic enough
+It is designed to run on a Teensy microcontroller, however it is generic enough
 that it should work on any arduino-compatible microcontroller.
 
 IMPORTANT: The Arduino MIDI library is included with the Teensy Arduino library,
@@ -260,15 +262,11 @@ void loop() {
     // PM/SM values being pulled low
     for (byte key = 0; key < TOTAL_KEYS; key++) {
       if (t_pin == keybed[key][0]) {
-        // Get PM value from keybed map
-        byte pm_pin = keybed[key][1];
-        bool pm_switch_is_on = digitalRead(pm_pin) == LOW ? true : false;
+        // Read PM and SM pin values
+        bool pm_switch_is_on = digitalRead(keybed[key][1]) == LOW ? true : false;
+        bool sm_switch_is_on = digitalRead(keybed[key][2]) == LOW ? true : false;
 
-        // Get SM value from keybed map
-        byte sm_pin = keybed[key][2];
-        bool sm_switch_is_on = digitalRead(sm_pin) == LOW ? true : false;
-
-        // Get references to this key's state/ktime
+        // Create references to this key's state/ktime
         byte& state = states[key];
         long long& ktime = ktimes[key];
 
