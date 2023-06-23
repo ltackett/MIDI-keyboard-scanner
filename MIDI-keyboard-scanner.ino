@@ -170,8 +170,8 @@ byte sm_switches[TOTAL_KEYS] = {};
 // Store for state per key
 byte states[TOTAL_KEYS] = {};
 
-// Store for PM-to-SM delta time (ktime) per key
-long long ktimes[TOTAL_KEYS] = {};
+// Store for key-cycle start times (in milliseconds) since start of program
+unsigned long ktimes[TOTAL_KEYS] = {};
 
 // Boolean if any notes are on
 bool is_note_on = false;
@@ -187,7 +187,7 @@ void send_midi_note(byte status_byte, byte key_index, unsigned int time) {
   if (t < MIN_TIME_MS)
     t = MIN_TIME_MS;
   t -= MIN_TIME_MS;
-  unsigned long velocity = 127 - (t * 127 / MAX_TIME_MS_N);
+  unsigned int velocity = 127 - (t * 127 / MAX_TIME_MS_N);
   byte vel = (((velocity * velocity) >> 7) * velocity) >> 7;
 
   #ifdef DEBUG_MIDI_MESSAGE
@@ -272,7 +272,7 @@ void loop() {
 
         // Create references to this key's state/ktime
         byte& state = states[key];
-        long long& ktime = ktimes[key];
+        unsigned long& ktime = ktimes[key];
 
         // State machine
         // TODO: Add support for sustain pedal
