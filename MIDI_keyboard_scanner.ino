@@ -64,7 +64,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define LED_PIN 13
 
-#define TOTAL_KEYS 32
 #define STATE_KEY_OFF 0
 #define STATE_KEY_START 1
 #define STATE_KEY_ON 2
@@ -75,6 +74,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MAX_TIME_MS_N (MAX_TIME_MS - MIN_TIME_MS)
 
 #define MIDI_CHANNEL 1
+#define MIDI_NOTE_OFFSET 41
+#define TOTAL_KEYS 32
 
 // Trigger pins (OUTPUT)
 byte t_pins[]{
@@ -108,62 +109,69 @@ byte sm_pins[]{
 
 // Note names from lowest to highest, grouped by octave
 // Each element has a counterpart item in the keybed array at the same index
-//
-// TODO: Include the note_name in the keybed array. Structs? Unions?
-const char* note_names[32] = {    "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
-  "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
-  "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
-  "C5",
+#ifdef DEBUG_STATE_MACHINE
+  const char* note_names[TOTAL_KEYS] = {    "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
+    "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
+    "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
+    "C5",
+  };
+#endif
+
+// Map of pin combinations per key, grouped by octave
+byte keybed[TOTAL_KEYS][3]{
+  // T      // PM    // SM      // note
+  { PIN_T1, PIN_PM2, PIN_SM2 }, // F2
+  { PIN_T2, PIN_PM2, PIN_SM2 }, // F#2
+  { PIN_T3, PIN_PM2, PIN_SM2 }, // G2
+  { PIN_T4, PIN_PM2, PIN_SM2 }, // G#2
+  { PIN_T5, PIN_PM2, PIN_SM2 }, // A2
+  { PIN_T6, PIN_PM2, PIN_SM2 }, // A#2
+  { PIN_T7, PIN_PM2, PIN_SM2 }, // B2
+
+  { PIN_T0, PIN_PM3, PIN_SM3 }, // C3
+  { PIN_T1, PIN_PM3, PIN_SM3 }, // C#3
+  { PIN_T2, PIN_PM3, PIN_SM3 }, // D3
+  { PIN_T3, PIN_PM3, PIN_SM3 }, // D#3
+  { PIN_T4, PIN_PM3, PIN_SM3 }, // E3
+  { PIN_T5, PIN_PM3, PIN_SM3 }, // F3
+  { PIN_T6, PIN_PM3, PIN_SM3 }, // F#3
+  { PIN_T7, PIN_PM3, PIN_SM3 }, // G3
+  { PIN_T0, PIN_PM4, PIN_SM4 }, // G#3
+  { PIN_T1, PIN_PM4, PIN_SM4 }, // A3
+  { PIN_T2, PIN_PM4, PIN_SM4 }, // A#3
+  { PIN_T3, PIN_PM4, PIN_SM4 }, // B3
+
+  { PIN_T4, PIN_PM4, PIN_SM4 }, // C4
+  { PIN_T5, PIN_PM4, PIN_SM4 }, // C#4
+  { PIN_T6, PIN_PM4, PIN_SM4 }, // D4
+  { PIN_T7, PIN_PM4, PIN_SM4 }, // D#4
+  { PIN_T0, PIN_PM5, PIN_SM5 }, // E4
+  { PIN_T1, PIN_PM5, PIN_SM5 }, // F4
+  { PIN_T2, PIN_PM5, PIN_SM5 }, // F#4
+  { PIN_T3, PIN_PM5, PIN_SM5 }, // G4
+  { PIN_T4, PIN_PM5, PIN_SM5 }, // G#4
+  { PIN_T5, PIN_PM5, PIN_SM5 }, // A4
+  { PIN_T6, PIN_PM5, PIN_SM5 }, // A#4
+  { PIN_T7, PIN_PM5, PIN_SM5 }, // B4
+
+  { PIN_T0, PIN_PM6, PIN_SM6 }  // C5
 };
 
-// Map of pin combinations per key, their initial state, and the PM-to-SM delta time (ktime)
-// Grouped by octave
-int keybed[32][5]{
-  // T      // PM    // SM    // state       // ktime  // note
-  { PIN_T1, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // F2
-  { PIN_T2, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // F#2
-  { PIN_T3, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // G2
-  { PIN_T4, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // G#2
-  { PIN_T5, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // A2
-  { PIN_T6, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // A#2
-  { PIN_T7, PIN_PM2, PIN_SM2, STATE_KEY_OFF, 0 },      // B2
+// Store for state per key
+byte states[TOTAL_KEYS] = {};
 
-  { PIN_T0, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // C3
-  { PIN_T1, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // C#3
-  { PIN_T2, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // D3
-  { PIN_T3, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // D#3
-  { PIN_T4, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // E3
-  { PIN_T5, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // F3
-  { PIN_T6, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // F#3
-  { PIN_T7, PIN_PM3, PIN_SM3, STATE_KEY_OFF, 0 },      // G3
-  { PIN_T0, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // G#3
-  { PIN_T1, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // A3
-  { PIN_T2, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // A#3
-  { PIN_T3, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // B3
+// Store for PM-to-SM delta time (ktime) per key
+long long ktimes[TOTAL_KEYS] = {};
 
-  { PIN_T4, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // C4
-  { PIN_T5, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // C#4
-  { PIN_T6, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // D4
-  { PIN_T7, PIN_PM4, PIN_SM4, STATE_KEY_OFF, 0 },      // D#4
-  { PIN_T0, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // E4
-  { PIN_T1, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // F4
-  { PIN_T2, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // F#4
-  { PIN_T3, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // G4
-  { PIN_T4, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // G#4
-  { PIN_T5, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // A4
-  { PIN_T6, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // A#4
-  { PIN_T7, PIN_PM5, PIN_SM5, STATE_KEY_OFF, 0 },      // B4
-
-  { PIN_T0, PIN_PM6, PIN_SM6, STATE_KEY_OFF, 0 }       // C5
-};
+// Boolean if any notes are on
+bool is_note_on = false;
 
 // Handle calculating velicty and sending MIDI data
 void send_midi_note(byte status_byte, byte key_index, unsigned int time) {
-  // Key offset to start MIDI events at F2
-  byte key = 41 + key_index;
+  byte key = MIDI_NOTE_OFFSET + key_index;
 
   // Velocity from time measurement
-  unsigned long t = (unsigned int) time;
+  unsigned int t = time;
   if (t > MAX_TIME_MS)
     t = MAX_TIME_MS;
   if (t < MIN_TIME_MS)
@@ -222,56 +230,58 @@ void setup() {
 
 void loop() {
   // Detect if any keys are on
-  bool is_note_on = false;
   for (byte key = 0; key < TOTAL_KEYS; key++) {
-    if (keybed[key][3] == STATE_KEY_ON) {
+    if (states[key] == STATE_KEY_ON) {
       is_note_on = true;
     }
   }
+
   // Illuminate the LED if any keys are on
   digitalWrite(LED_PIN, is_note_on);
 
   // Scan through each T pin
-  for (byte t_pin = 0; t_pin < sizeof(t_pins); t_pin++) {
-    int T_Pin = t_pins[t_pin];
+  for (byte t_pin_index = 0; t_pin_index < sizeof(t_pins); t_pin_index++) {
+    byte t_pin = t_pins[t_pin_index];
 
     // Enable T pin
-    digitalWrite(T_Pin, LOW);
+    digitalWrite(t_pin, LOW);
 
     // Delay scanning by a tiny amount to prevent ghost readings
     delayMicroseconds(1);
 
     // Scan through each PM pin
-    for (byte pm_index = 0; pm_index < sizeof(pm_pins); pm_index++) {
-      int PM_Pin = pm_pins[pm_index];
-      int PM_Pin_val = digitalRead(PM_Pin);
+    for (byte pm_pin_index = 0; pm_pin_index < sizeof(pm_pins); pm_pin_index++) {
+      byte pm_pin = pm_pins[pm_pin_index];
+      bool pm_switch_is_on = digitalRead(pm_pin) == LOW ? true : false;
 
-      // Scanning the SM pins is unnecessary, as we can derive the related SM
+      // Scanning each SM pins is unnecessary, as we can derive the related SM
       // pin from the PM pin index.
-      int SM_Pin = sm_pins[pm_index];
-      int SM_Pin_val = digitalRead(SM_Pin);
+      byte sm_pin = sm_pins[pm_pin_index];
+      bool sm_switch_is_on = digitalRead(sm_pin) == LOW ? true : false;
 
       // Loop through each key and update the state of the key based on the
       // PM/SM values being pulled low
       for (byte key = 0; key < TOTAL_KEYS; key++) {
 
         // Match the key in the loop with the current PM gate
-        if (keybed[key][0] == T_Pin && keybed[key][1] == PM_Pin) {
-          // Get references to this key's state/ktime so that when we update it,
-          // the update applies to corresponding key in the keybed array
-          int& state = keybed[key][3];
-          int& ktime = keybed[key][4];
+        if (keybed[key][0] == t_pin && keybed[key][1] == pm_pin) {
+          // Get references to this key's state/ktime so that when we write to
+          // it, the new value is stored in the corresponding index of their
+          // respective arrays
+          byte& state = states[key];
+          long long& ktime = ktimes[key];
 
           #ifdef DEBUG_STATE_MACHINE
             const char* note_name = note_names[key];
           #endif
 
           // State machine
+          // TODO: Add support for sustain pedal
           switch (state) {
             case STATE_KEY_OFF:
-              if (PM_Pin_val == LOW) {
+              if (pm_switch_is_on) {
                 state = STATE_KEY_START;
-                ktime = millis();
+                ktime = millis(); // get current 
 
                 #ifdef DEBUG_STATE_MACHINE
                   Serial.print(note_name);
@@ -281,7 +291,7 @@ void loop() {
               break;
             
             case STATE_KEY_START:
-              if (SM_Pin_val == LOW) {
+              if (sm_switch_is_on) {
                 state = STATE_KEY_ON;
                 send_midi_note(0x90, key, millis() - ktime); // MIDI note_on
 
@@ -291,7 +301,7 @@ void loop() {
                   Serial.println(millis() - ktime);
                 #endif
                 
-              } else if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+              } else if (!pm_switch_is_on && !sm_switch_is_on) {
                 state = STATE_KEY_OFF;
 
                 #ifdef DEBUG_STATE_MACHINE
@@ -303,7 +313,7 @@ void loop() {
               break;
             
             case STATE_KEY_ON:
-              if (SM_Pin_val == HIGH) {
+              if (!sm_switch_is_on) {
                 state = STATE_KEY_RELEASED;
 
                 #ifdef DEBUG_STATE_MACHINE
@@ -311,8 +321,9 @@ void loop() {
                   Serial.println(" released");
                 #endif
 
-              } else if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+              } else if (!pm_switch_is_on && !sm_switch_is_on) {
                 state = STATE_KEY_OFF;
+
                 #ifdef DEBUG_STATE_MACHINE
                   Serial.print(note_name);
                   Serial.println(" off condition met before release was detected, reset to off");
@@ -322,7 +333,7 @@ void loop() {
               break;
 
             case STATE_KEY_RELEASED:
-              if (PM_Pin_val == HIGH && SM_Pin_val == HIGH) {
+              if (!pm_switch_is_on && !sm_switch_is_on) {
                 state = STATE_KEY_OFF;
                 send_midi_note(0x80, key, millis() - ktime); // MIDI note_off
 
@@ -342,8 +353,6 @@ void loop() {
     }
 
     // Reset T pin for next measurement
-    digitalWrite(T_Pin, HIGH);
-
-    // TODO: Add support for sustain pedal
+    digitalWrite(t_pin, HIGH);
   }
 }
