@@ -41,7 +41,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DEBUG_MIDI_MESSAGE
 
 // Uncomment to see serial messages from the state machine
-#define DEBUG_STATE_MACHINE
+// #define DEBUG_STATE_MACHINE
 
 #define PIN_T0 0
 #define PIN_T1 1
