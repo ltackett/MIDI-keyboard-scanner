@@ -248,18 +248,17 @@ void loop() {
   // Illuminate the LED if any keys are on
   digitalWrite(LED_PIN, is_note_on);
 
-  // Scan through each T pin
+  // Loop through each t_pin
   for (byte t_pin_index = 0; t_pin_index < sizeof(t_pins); t_pin_index++) {
     byte t_pin = t_pins[t_pin_index];
 
-    // Enable T pin
+    // Enable t_pin
     digitalWrite(t_pin, LOW);
 
     // Delay scanning by a tiny amount to prevent ghost readings
     delayMicroseconds(1);
 
-    // Loop through each key and update the state of the key based on the
-    // PM/SM values being pulled low
+    // Loop through each key and match by t_pin
     for (byte key = 0; key < TOTAL_KEYS; key++) {
       if (t_pin == keybed[key][0]) {
         // Read PM and SM pin values
@@ -341,7 +340,7 @@ void loop() {
       }
     }
 
-    // Reset T pin for next measurement
+    // Reset t_pin for next measurement
     digitalWrite(t_pin, HIGH);
   }
 }
